@@ -48,14 +48,30 @@ def top_p_filter(logits, p):
     # TODO: keep smallest set of tokens whose cumulative prob >= p, mask the rest to -inf.
     probs = stable_softmax(logits)
 
+    # ort ids and get corresponding vals
     idx = np.argsort(-probs, axis=-1, kind='stable')
     vals = np.take_along_axis(probs, idx, axis=-1)
+
+    # Get cumulative prob mass
     cum_probs = np.cumsum(vals, axis=-1)
 
+    # Decide if we keep the token if we met p before the token came along
     keep_sorted = (cum_probs - vals) < p
 
+    # Start with zero mask
     mask = np.zeros_like(keep_sorted)
+
+    # Fill zero mask using sorted ids map and sorted values to keep
     np.put_along_axis(mask, idx, keep_sorted, axis=-1)
 
+    # Filter logits based on this
     return np.where(mask, logits, -np.inf)
+
+# Step 5 - sample_from_probs
+def sample_from_probs(probs, rng):
+    # TODO: draw a single token id from the categorical distribution probs using rng
+    
+    id = rng.choice(len(probs), p=probs)
+
+    return int(id)
 
