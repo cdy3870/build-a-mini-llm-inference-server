@@ -83,3 +83,21 @@ def greedy_select(logits):
 
     return indices[0][0]
 
+# Step 7 - build_vocab
+def build_vocab(corpus, special_tokens):
+    # TODO: build a character-level vocab; specials get the lowest ids, then sorted unique chars.
+    tokens = [s for s in special_tokens]
+    total_set = set()
+    for word in corpus:
+        for char in word:
+            total_set.add(char)
+
+    for char in sorted(list(total_set)):
+        tokens.append(char)
+
+    token_to_id = {}
+    for i in range(len(tokens)):
+        token_to_id[tokens[i]] = i
+
+    return {"token_to_id": token_to_id, "id_to_token": tokens}
+
