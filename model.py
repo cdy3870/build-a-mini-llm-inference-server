@@ -123,3 +123,21 @@ def encode_prompt(text, vocab, add_bos=True):
 
     return ids
 
+# Step 9 - decode_tokens
+def decode_tokens(token_ids, vocab, skip_special=True):
+    # TODO: convert token ids back into a string using vocab['id_to_token'], optionally skipping specials.
+    
+    id_to_token = vocab["id_to_token"]
+
+    string = ""
+
+    for id in token_ids:
+        token = id_to_token[id]
+        if not skip_special:
+            string += token
+        else:
+            if token[0] != "<" and token[-1] != ">":
+                string += token
+
+    return string
+
