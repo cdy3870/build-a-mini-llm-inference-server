@@ -168,3 +168,17 @@ def init_kv_cache(max_seq_len, d_model):
 
     return {"K": K_buffer, "V": V_buffer, "length": 0}
 
+# Step 13 - append_kv
+import numpy as np
+
+def append_kv(cache, k_new, v_new):
+    # TODO: write k_new and v_new into the cache starting at cache['length'] and bump length.
+    
+    L = cache["length"]
+    t = k_new.shape[0]
+    cache["K"][L:L+t] = k_new
+    cache["V"] [L:L+t] = v_new
+    cache["length"] += t
+
+    return cache
+
