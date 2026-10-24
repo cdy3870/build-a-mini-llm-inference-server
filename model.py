@@ -202,3 +202,22 @@ def causal_attention(q, k, v, is_causal=True):
 
     return attention
 
+# Step 15 - model_prefill
+def model_prefill(token_ids, params):
+    # TODO: embed tokens, project Q/K/V, fill the KV cache, run causal attention, return last-position logits.
+    x = embed_tokens(token_ids, params["embedding"])
+    k = linear_projection(x, params["Wk"])
+    q = linear_projection(x, params["Wq"])
+    v = linear_projection(x, params["Wv"])
+
+    kv_cache = init_kv_cache(params["max_seq_len"], params["embedding"].shape[1])
+    kv_cache = append_kv(kv_cache, k, v)
+
+    T = len(token_ids)
+    attention = causal_attention(q, kv_cache["K"][:T], kv_cache["V"][:T], is_causal=True)
+    
+    H = attention @ params["Wo"]
+
+    logits = H[-1] @ params["W_out"]
+    return logits, kv_cache
+
