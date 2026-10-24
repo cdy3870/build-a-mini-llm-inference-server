@@ -187,11 +187,14 @@ import numpy as np
 
 def causal_attention(q, k, v, is_causal=True):
     # TODO: scaled dot-product attention with optional causal mask, returns (Tq, D)
-    attention_scores = (q @ k.T) / np.sqrt(q.shape[-1])
+    attention_scores = (q @ k.T) / np.sqrt(q.shape[-1]) # scale so scores don't get too high as vector does
 
     if is_causal:
         Tk = attention_scores.shape[1]
         Tq = attention_scores.shape[0]
+        # k decides how many to the right of the diagonal gets masked
+        # in normal attention tk = tq, but with kv cache q doesnt need to be
+        # as high anymore
         mask = np.triu(np.ones((Tq, Tk), dtype=bool), k=1 + (Tk - Tq))
         attention_scores[mask] = -np.inf
         
