@@ -221,3 +221,24 @@ def model_prefill(token_ids, params):
     logits = H[-1] @ params["W_out"]
     return logits, kv_cache
 
+# Step 16 - model_decode_step
+def model_decode_step(token_id, cache, params):
+    """Advance generation by one token using the existing KV cache."""
+    # TODO: advance generation by one token using the existing KV cache and return next-token logits
+    
+    x = embed_tokens([token_id], params["embedding"])
+
+    k = linear_projection(x, params["Wk"])
+    q = linear_projection(x, params["Wq"])
+    v = linear_projection(x, params["Wv"])
+
+    kv_cache = append_kv(cache, k, v)
+
+    L = kv_cache["length"]
+    attention = causal_attention(q, kv_cache["K"][:L], kv_cache["V"][:L], is_causal=True)
+    
+    H = attention @ params["Wo"]
+
+    logits = H[-1] @ params["W_out"]
+    return logits, kv_cache
+
