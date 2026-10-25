@@ -250,3 +250,24 @@ def blocks_needed(num_tokens, block_size):
 
     return math.ceil(num_tokens / block_size)
 
+# Step 18 - init_block_allocator
+def init_block_allocator(num_blocks, block_size, d_model):
+    # TODO: build the paged KV allocator dict with K_blocks, V_blocks, free_list, seq_tables, and config.
+    
+    K_blocks = np.zeros((num_blocks, block_size, d_model))
+    V_blocks = np.zeros((num_blocks, block_size, d_model))
+
+    free_list = [i for i in range(num_blocks)]
+
+    seq_tables = {}
+
+    return {
+        "K_blocks": K_blocks,
+        "V_blocks": V_blocks,
+        "free_list": free_list,
+        "block_size": block_size,
+        "num_blocks": num_blocks,
+        "d_model": d_model,
+        "seq_tables": seq_tables
+    }
+
