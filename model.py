@@ -287,3 +287,11 @@ def allocate_block(allocator, seq_id):
 
     return value
 
+# Step 20 - free_block
+def free_block(allocator, block_id):
+    # TODO: return block_id to allocator['free_list']
+    
+    allocator["free_list"].append(block_id)
+
+    return None
+
