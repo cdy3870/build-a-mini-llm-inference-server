@@ -302,21 +302,32 @@ def append_to_paged_cache(allocator, seq_id, k_new, v_new):
     if "seq_lengths" not in allocator:
         L = 0
     else:
+        # Get the current length that has been allocated
         L = allocator["seq_lengths"].get(seq_id, 0)
 
     B = allocator["block_size"]
     tokens = k_new.shape[0]
 
+    # Determine how many blocks in total are needed (previously allocated + new tokens)
     blocks = blocks_needed(tokens + L, B)    
 
+    # If not enough blocks, allocate (look at free list of blocks, create a new block in the block table)
     tables = allocator["seq_tables"].setdefault(seq_id, [])
     while len(tables) < blocks:
         allocate_block(allocator, seq_id)
 
+
     for i in range(tokens):
+        # Determine where in the sequence you are for the new token
         p = L + i
+
+        # Which block it goes into
         b = p // B
+
+        # Which slot in the block
         s = p % B 
+
+        # Map back to block id
         block_id = allocator["seq_tables"][seq_id][b]
 
         allocator["K_blocks"][block_id, s] = k_new[i]
