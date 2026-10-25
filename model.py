@@ -247,12 +247,6 @@ import math
 def blocks_needed(num_tokens, block_size):
     # TODO: return the number of fixed-size blocks needed to store num_tokens tokens.
     
-    if num_tokens == 0:
-        return 0
-    elif num_tokens == block_size:
-        return 1
-    elif num_tokens == block_size + 1:
-        return 2
 
     return math.ceil(num_tokens / block_size)
 
