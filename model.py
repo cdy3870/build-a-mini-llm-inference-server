@@ -374,3 +374,20 @@ def paged_attention_step(q, allocator, seq_id):
 
     return attention
 
+# Step 24 - free_sequence_blocks
+def free_sequence_blocks(allocator, seq_id):
+    # TODO: release all blocks owned by seq_id and remove its entry from seq_tables.
+    
+    if seq_id not in allocator["seq_tables"]:
+        return
+
+    table = allocator["seq_tables"][seq_id]
+
+    for block_id in table:
+        free_block(allocator, block_id)
+        
+    allocator["seq_tables"].pop(seq_id)
+
+
+    return None
+
