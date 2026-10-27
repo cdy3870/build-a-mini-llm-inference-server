@@ -365,3 +365,12 @@ def gather_kv_from_blocks(allocator, seq_id):
 
     return K, V
 
+# Step 23 - paged_attention_step
+def paged_attention_step(q, allocator, seq_id):
+    # TODO: gather K, V for seq_id from the paged allocator and run causal attention with q
+    
+    k, v = gather_kv_from_blocks(allocator, seq_id)
+    attention = causal_attention(q, k, v)
+
+    return attention
+
