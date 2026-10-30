@@ -507,3 +507,37 @@ def build_batch_step_input(sequences):
 
     return {"active_indices": active_indices, "input_ids": inputs_array}
 
+# Step 32 - batched_decode_step
+def batched_decode_step(params, sequences, sampling_config):
+    """Run one synchronized decode step across active sequences."""
+    d = build_batch_step_input(sequences)
+    active_indices = d["active_indices"]
+    input_ids = d["input_ids"]
+    for i, ind in enumerate(active_indices):
+
+        input_id = input_ids[i]
+        cache = sequences[ind]["kv_cache"]
+        logits, sequences[ind]["kv_cache"] = model_decode_step(input_id, cache, params)
+
+        if "temperature" in sampling_config:
+            temp = sampling_config["temperature"]
+        else:
+            temp = 0
+        logits = apply_temperature(logits, temp)
+
+        if "top_k" in sampling_config:
+            logits = top_k_filter(logits, sampling_config["top_k"])
+  
+        if "top_p" in sampling_config:
+            logits = top_p_filter(logits, sampling_config["top_p"])
+        probs = stable_softmax(logits)
+
+        if sampling_config["greedy"]:
+            id = greedy_select(probs)
+        else:
+            id = sample_from_probs(probs, sampling_config["rng"])
+
+        sequences[ind]["token_ids"].append(int(id))
+
+    return sequences
+
