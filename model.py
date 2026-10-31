@@ -548,12 +548,22 @@ def static_batch_generate(params, requests, sampling_config, max_new_tokens):
     # TODO: prefill each request, then loop sampling next tokens until done.
     
     generated = []
+
+    # Go through each request
     for r in requests:  
+
+        # Perform prefill
         state = init_sequence_state(r, params)
+
+        # Each request has a max new tokens and there's also a global one, make sure it's under
         cap = min(state["max_new_tokens"], max_new_tokens)
         
         while len(state["generated"]) < cap:
+
+            # Start with the logits produced from the prefill, on next iteration use updated cache
             logits = state["last_logits"]
+
+            # Sample token 
             if "greedy" in sampling_config:
                 token_id = int(greedy_select(logits))
             else:
@@ -569,10 +579,17 @@ def static_batch_generate(params, requests, sampling_config, max_new_tokens):
                 probs = stable_softmax(logits)
                 token_id = int(sample_from_probs(probs))
 
+            # Perform decode using stored cache and updated cache and generated logits,
             state["generated"].append(token_id)
             state["last_logits"], state["cache"] = model_decode_step(token_id, state["cache"], params)
         
         generated.append({"request_id": state["request_id"], "output_ids": state["generated"]})
 
     return generated
+
+# Step 34 - has_free_capacity
+def has_free_capacity(allocator, required_blocks):
+    # TODO: return True iff allocator has at least required_blocks free blocks.
+    
+    return len(allocator["free_list"]) >= required_blocks
 
