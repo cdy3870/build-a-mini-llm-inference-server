@@ -593,3 +593,46 @@ def has_free_capacity(allocator, required_blocks):
     
     return len(allocator["free_list"]) >= required_blocks
 
+# Step 35 - continuous_batch_step
+def continuous_batch_step(params, running, allocator, sampling_config):
+    """Advance every active sequence in `running` by one decoded token using the paged allocator."""
+    # TODO: for each non-done sequence, project Q/K/V from its last token, append to the paged cache, run paged attention, sample, and append.
+    embedding_matrix = params["embedding"]
+
+    for run in running:
+        if run["done"]:
+            continue
+        token_id = run["token_ids"][-1]
+        embedded = embed_tokens([token_id], embedding_matrix)
+        q = linear_projection(embedded, params["Wq"], bias=None)
+        k = linear_projection(embedded, params["Wk"], bias=None)
+        v = linear_projection(embedded, params["Wv"], bias=None)
+
+        allocator = append_to_paged_cache(allocator, run["request_id"], k, v)
+        attention = paged_attention_step(q, allocator, run["request_id"])
+        H = attention @ params["Wo"]
+        logits = H[-1] @ params["W_out"]
+
+        # Sample token 
+        if "greedy" in sampling_config and sampling_config["greedy"]:
+            token_id = int(greedy_select(logits))
+        else:
+            if "temperature" in sampling_config:
+                logits = apply_temperature(logits, sampling_config["temperature"])
+            
+            if "top_k" in sampling_config:
+                logits = top_k_filter(logits, sampling_config["top_k"])
+
+            if "top_p" in sampling_config:
+                logits = top_p_filter(logits, sampling_config["top_p"])
+            
+            probs = stable_softmax(logits)
+            token_id = int(sample_from_probs(probs, sampling_config["rng"]))
+
+        run["generated"].append(token_id)
+        run["token_ids"].append(token_id)
+
+        run["done"] = is_sequence_done(run, sampling_config["eos_token_id"])
+        run["length"] += 1
+    return running
+
