@@ -541,3 +541,38 @@ def batched_decode_step(params, sequences, sampling_config):
 
     return sequences
 
+# Step 33 - static_batch_generate
+def static_batch_generate(params, requests, sampling_config, max_new_tokens):
+    """Run prefill for all requests, then iterate batched decode steps until each
+    sequence hits its per-request budget or the global max_new_tokens cap."""
+    # TODO: prefill each request, then loop sampling next tokens until done.
+    
+    generated = []
+    for r in requests:  
+        state = init_sequence_state(r, params)
+        cap = min(state["max_new_tokens"], max_new_tokens)
+        
+        while len(state["generated"]) < cap:
+            logits = state["last_logits"]
+            if "greedy" in sampling_config:
+                token_id = int(greedy_select(logits))
+            else:
+                if "temperature" in sampling_config:
+                    logits = apply_temperature(logits, sampling_config["temperature"])
+                
+                if "top_k" in sampling_config:
+                    logits = top_k_filter(logits, sampling_config["top_k"])
+
+                if "top_p" in sampling_config:
+                    logits = top_p_filter(logits, sampling_config["top_p"])
+                
+                probs = stable_softmax(logits)
+                token_id = int(sample_from_probs(probs))
+
+            state["generated"].append(token_id)
+            state["last_logits"], state["cache"] = model_decode_step(token_id, state["cache"], params)
+        
+        generated.append({"request_id": state["request_id"], "output_ids": state["generated"]})
+
+    return generated
+
