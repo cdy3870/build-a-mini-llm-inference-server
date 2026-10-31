@@ -648,9 +648,15 @@ def run_continuous_batching(params, requests, allocator, sampling_config, max_st
         r["token_ids"] = r["prompt_token_ids"]
         r["generated"] = []
         r["length"] = 0
-    while count < max_steps or not all_finished:
+        # r["max_new_tokens"] = max_steps
+    while not all_finished:
         requests = continuous_batch_step(params, requests, allocator, sampling_config)
         count += 1
+
+        for r in requests:
+            if len(r["generated"]) >= max_steps:
+                r["done"] = True
+
         all_finished = all([r["done"] for r in requests])
 
     for r in requests:
