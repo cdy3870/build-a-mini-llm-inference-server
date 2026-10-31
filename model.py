@@ -599,8 +599,9 @@ def continuous_batch_step(params, running, allocator, sampling_config):
     # TODO: for each non-done sequence, project Q/K/V from its last token, append to the paged cache, run paged attention, sample, and append.
     embedding_matrix = params["embedding"]
 
+    # Just run one step for each sequence
     for run in running:
-        if run["done"]:
+        if run["done"] or len(run["generated"]) > run["max_new_tokens"]:
             continue
         token_id = run["token_ids"][-1]
         embedded = embed_tokens([token_id], embedding_matrix)
@@ -608,6 +609,7 @@ def continuous_batch_step(params, running, allocator, sampling_config):
         k = linear_projection(embedded, params["Wk"], bias=None)
         v = linear_projection(embedded, params["Wv"], bias=None)
 
+        # Perform paged attention, find kv in block
         allocator = append_to_paged_cache(allocator, run["request_id"], k, v)
         attention = paged_attention_step(q, allocator, run["request_id"])
         H = attention @ params["Wo"]
@@ -635,4 +637,25 @@ def continuous_batch_step(params, running, allocator, sampling_config):
         run["done"] = is_sequence_done(run, sampling_config["eos_token_id"])
         run["length"] += 1
     return running
+
+# Step 36 - run_continuous_batching
+def run_continuous_batching(params, requests, allocator, sampling_config, max_steps):
+    # TODO: Drive the continuous-batching loop: admit, decode, retire finished sequences.
+    count = 0
+    all_finished = False
+    for r in requests:
+        r["done"] = False
+        r["token_ids"] = r["prompt_token_ids"]
+        r["generated"] = []
+        r["length"] = 0
+    while count < max_steps or not all_finished:
+        requests = continuous_batch_step(params, requests, allocator, sampling_config)
+        count += 1
+        all_finished = all([r["done"] for r in requests])
+
+    for r in requests:
+        r["output_ids"] = r["generated"]
+
+
+    return requests
 
