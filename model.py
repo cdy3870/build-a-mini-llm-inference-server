@@ -678,3 +678,14 @@ def priority_queue_push(heap, priority, request):
 
     return heap
 
+# Step 38 - priority_queue_pop
+import heapq
+
+def priority_queue_pop(heap):
+    # TODO: Pop and return the request with the smallest priority from the min-heap, or None if empty.
+    
+    if len(heap) == 0 or not heap:
+        return None
+
+    return heapq.heappop(heap)[2]
+
