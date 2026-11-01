@@ -696,19 +696,36 @@ def select_admissions(waiting_heap, allocator, block_size, max_admit):
     admitted = []
     available = len(allocator["free_list"])
 
+    # only allow up to a certain number of admissions
     while len(admitted) < max_admit:
+
+        # Take the highest priority request
         top_request = priority_queue_pop(waiting_heap)
         if top_request is None:
             return admitted
 
+        # Determine how many blocks in the page allocator is needed for the request
         needed = blocks_needed(len(top_request["prompt_token_ids"]), block_size)
 
+        # See if we have enough blocks available
         if needed <= available:
-
             admitted.append(top_request)
-            available -= needed
+            available -= needed # if yes, then decrement by how many are used
         else:
+            # Have requests wait if there are no more blocks available
             waiting_heap = priority_queue_push(waiting_heap, top_request["priority"], top_request)
             break
     return admitted
+
+# Step 40 - preempt_sequence
+def preempt_sequence(sequence, allocator, waiting_heap):
+    # TODO: free the sequence's KV blocks and re-queue its request on the waiting heap.
+    
+    seq_id = sequence["request_id"]
+    free_sequence_blocks(allocator, seq_id)
+    request = {"request_id": seq_id, "prompt_token_ids": sequence["prompt_token_ids"], "max_new_tokens": sequence["max_new_tokens"], "priority": sequence["priority"]}
+
+    priority_queue_push(waiting_heap, request["priority"], request)
+
+    return request
 
