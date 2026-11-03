@@ -804,3 +804,26 @@ def time_to_first_token(events):
 
     return ttft
 
+# Step 48 - inter_token_latency
+import numpy as np
+def inter_token_latency(events):
+    # TODO: compute mean inter-token latency per request from token-event timestamps.
+    
+    sorted_events = {}
+    for e in events:
+        if e["event"] == "token":
+            sorted_events.setdefault(e["request_id"], []).append(e["time"])
+
+
+    # print(np.array(sorted_events["r1"][1:]) - np.array(sorted_events["r1"][:-1]))
+    # print(sorted_events)
+    itls = {}
+    for k, v in sorted_events.items():
+        v = list(sorted(v))
+        if len(v) == 1:
+            itls[k] = 0.0
+        else:
+            itls[k] = float((np.array(v[1:]) - np.array(v[:-1])).sum() / (len(v) - 1))
+
+    return itls
+
