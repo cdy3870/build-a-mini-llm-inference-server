@@ -770,3 +770,37 @@ def submit_request(server_state, prompt, max_new_tokens, priority, vocab):
 
     return request_id
 
+# Step 47 - time_to_first_token
+def time_to_first_token(events):
+    # TODO: compute per-request TTFT from a list of timestamped serving events.
+    sorted_events = {}
+    submission_times = {}
+    for e in events:
+        if e["event"] != "submit":
+            sorted_events.setdefault(e["request_id"], []).append((e["event"], e["time"]))
+        else:
+            submission_times[e["request_id"]] = e["time"]
+
+    keep_list = []
+    # Filter no token events:
+    for k, v in sorted_events.items():
+        flag = False
+        for item in v:
+            if item[0] == "token":
+                flag = True
+                break
+        
+        if flag:
+            keep_list.append(k)
+
+
+
+    ttft = {}
+    for k, v in sorted_events.items():
+        if k in keep_list:
+            events, times = zip(*v)
+            ttft[k] = min(times) - submission_times[k]
+
+
+    return ttft
+
