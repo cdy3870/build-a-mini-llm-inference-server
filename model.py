@@ -843,3 +843,15 @@ def aggregate_throughput(events, total_time):
             "total_tokens": num_tokens,
             "total_requests": num_finished}
 
+# Step 50 - latency_percentiles
+def latency_percentiles(latencies, percentiles):
+    # TODO: return a dict mapping each percentile in `percentiles` to the corresponding latency value.
+    
+    if len(latencies) == 0:
+        return {float(percent):float(0.0) for percent in percentiles}
+
+    latencies_arr = np.array(latencies)
+    percent_values = np.percentile(latencies_arr, percentiles) 
+
+    return {float(p):float(pp) for p, pp in zip(percentiles, percent_values)}
+
