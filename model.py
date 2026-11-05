@@ -770,6 +770,21 @@ def submit_request(server_state, prompt, max_new_tokens, priority, vocab):
 
     return request_id
 
+# Step 45 - collect_request_output
+def collect_request_output(server_state, request_id):
+    # TODO: look up the completed record for request_id and return its output_ids and chunks
+    
+    completed = server_state.get("completed", {})
+    
+
+    record = completed.get(request_id)
+
+    if record is None:
+        return None
+
+
+    return {"request_id": request_id, "output_ids": record["output_ids"], "chunks": record["chunks"]}
+
 # Step 47 - time_to_first_token
 def time_to_first_token(events):
     # TODO: compute per-request TTFT from a list of timestamped serving events.
