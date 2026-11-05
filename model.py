@@ -785,6 +785,16 @@ def collect_request_output(server_state, request_id):
 
     return {"request_id": request_id, "output_ids": record["output_ids"], "chunks": record["chunks"]}
 
+# Step 46 - build_completion_response
+def build_completion_response(server_state, request_id, vocab):
+    # TODO: build the final OpenAI-style completion dict from the completed record.
+    
+    request = collect_request_output(server_state, request_id)
+    if request is None:
+        return None
+    text = decode_tokens(request["output_ids"], vocab, skip_special=True)
+    return {"request_id": request["request_id"], "text": text, "output_ids": request["output_ids"].copy(), "finish_reason": server_state["completed"][request_id].get("finish_reason", "stop")}
+
 # Step 47 - time_to_first_token
 def time_to_first_token(events):
     # TODO: compute per-request TTFT from a list of timestamped serving events.
