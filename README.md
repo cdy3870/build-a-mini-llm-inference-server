@@ -53,12 +53,14 @@ python scaffold.py
 - [x] **41.** schedule_step
 - [x] **42.** format_stream_chunk
 - [x] **43.** submit_request
+- [x] **44.** drive_until_complete
 - [x] **45.** collect_request_output
 - [x] **46.** build_completion_response
 - [x] **47.** time_to_first_token
 - [x] **48.** inter_token_latency
 - [x] **49.** aggregate_throughput
 - [x] **50.** latency_percentiles
+- [x] **51.** run_throughput_latency_benchmark
 
 ---
 

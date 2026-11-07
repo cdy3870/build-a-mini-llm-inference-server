@@ -770,6 +770,59 @@ def submit_request(server_state, prompt, max_new_tokens, priority, vocab):
 
     return request_id
 
+# Step 44 - drive_until_complete
+def drive_until_complete(server_state, params, allocator, sampling_config, vocab, max_steps):
+    waiting_heap = server_state["waiting_heap"]
+    running = server_state["running"]
+    completed = server_state.setdefault("completed", {})
+    streams = server_state.setdefault("streams", {})
+    max_running = server_state.get("max_running", 4)
+    eos_token_id = sampling_config.get("eos_token_id", -1)
+    block_size = allocator.get("block_size", 4)
+
+    new_chunks = []
+
+    for _ in range(max_steps):
+        if not waiting_heap and not running:
+            break
+
+        # Admit waiting requests into the running batch (as far as blocks allow).
+        scheduled = schedule_step(waiting_heap, running, allocator, block_size, max_running)
+        running = scheduled["running"]
+        if not running:
+            break  # nothing could be admitted (e.g. out of blocks)
+
+        # One decode step for the whole batch.
+        running = continuous_batch_step(params, running, allocator, sampling_config)
+
+        still_running = []
+        for seq in running:
+            rid = seq["request_id"]
+            token_id = seq["token_ids"][-1]
+            token_text = vocab[token_id] if isinstance(vocab, list) else vocab.get(token_id, "")
+            finished = is_sequence_done(seq, eos_token_id)
+
+            chunk = format_stream_chunk(rid, token_id, token_text, finished)
+            streams.setdefault(rid, []).append(chunk)
+            new_chunks.append(chunk)
+
+            if finished:
+                free_sequence_blocks(allocator, rid)
+                completed[rid] = {
+                    "request_id": rid,
+                    "generated": seq["generated"],
+                    "stream": streams[rid],
+                }
+            else:
+                still_running.append(seq)
+
+        running = still_running
+
+    server_state["running"] = running
+    server_state["completed"] = completed
+    server_state["streams"] = streams
+    return new_chunks
+
 # Step 45 - collect_request_output
 def collect_request_output(server_state, request_id):
     # TODO: look up the completed record for request_id and return its output_ids and chunks
@@ -879,4 +932,42 @@ def latency_percentiles(latencies, percentiles):
     percent_values = np.percentile(latencies_arr, percentiles) 
 
     return {float(p):float(pp) for p, pp in zip(percentiles, percent_values)}
+
+# Step 51 - run_throughput_latency_benchmark
+import time
+def run_throughput_latency_benchmark(params, allocator, vocab, prompts, sampling_config, max_new_tokens, max_steps):
+    # TODO: submit prompts, drive the server, and reduce events into TTFT/ITL/throughput/percentile metrics.
+    
+
+    server_state = {"sampling_params": sampling_config, "next_request_id": 0, "waiting_heap": [], "running": []} 
+    events = []
+
+    start = time.perf_counter()
+
+    for prompt in prompts:
+        request_id = submit_request(server_state, prompt, max_new_tokens, priority, vocab)
+        event = {"request_id": request_id, "event": "submit", "type": "submit", "time": time.now() - time.perf_counter()}
+        events.append(event)
+
+    new_chunks = drive_until_complete(server_state, params, allocator, sampling_config, vocab, max_steps)
+    latencies = []
+    first_token_tracker = {}
+    for chunk in new_chunks:
+        if chunk["request_id"] not in first_token_tracker:
+            events.append({"request_id": chunk["request_id"], "event": "token", "type": "first_token", "time": time.perf_counter()})
+            first_token_tracker[chunk["request_id"]] = 1
+        else:       
+            if e["finished"]:
+                finish_time = time.perf_counter()
+                latencies.append(finish_time)
+                events.append({"request_id": k, "event": "finish", "type": "finish", "time": finish_time})
+            else:
+                events.append({"request_id": k, "event": "token", "type": "token", "time": time.perf_counter()})
+
+    
+    total_time = time.perf_counter() - start
+    
+    
+
+    return {"ttft": time_to_first_token(events), "itl": inter_token_latency(events), "throughput": aggregate_throughput(events, total_time), "percentiles": latency_percentiles(latencies, sampling_config.get("percentiles", [50, 90, 99])), "total_time": total_time}
 
